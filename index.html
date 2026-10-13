@@ -1,392 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Axolotl AR Test</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: Arial, sans-serif; }
+    #panel { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 9999; padding: 18px; box-sizing: border-box; color: white; background: rgba(15,20,30,0.9); border-radius: 16px; pointer-events: none; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 0; line-height: 1.45; font-size: 15px; }
+  </style>
+  <script>
+    AFRAME.registerComponent("axolotl-test", {
+      init: function () {
+        this.ready = false;
+        this.failed = false;
+        this.tracked = false;
+        this.status = document.getElementById("status");
+        const target = this.el.parentElement;
 
-    <title>Print & Packaging AR</title>
+        this.onFound = () => { this.tracked = true; this.updateStatus(); };
+        this.onLost = () => { this.tracked = false; this.updateStatus(); };
+        target.addEventListener("targetFound", this.onFound);
+        target.addEventListener("targetLost", this.onLost);
 
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
-    <style>
-        html, body {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-
-        #panel {
-            position: fixed;
-            left: 16px;
-            right: 16px;
-            bottom: calc(16px + env(safe-area-inset-bottom));
-            z-index: 9999;
-            box-sizing: border-box;
-            padding: 18px;
-            color: white;
-            background: rgba(15, 20, 30, 0.9);
-            border-radius: 16px;
-        }
-
-        #heading {
-            margin: 0 0 8px;
-            font-size: 20px;
-        }
-
-        #info {
-            margin: 0 0 12px;
-            line-height: 1.45;
-            font-size: 15px;
-        }
-
-        #hint {
-            margin: 0 0 12px;
-            font-size: 13px;
-            color: #d5dce5;
-        }
-
-        #next {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            background: #c24b27;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        #next:disabled {
-            opacity: 0.55;
-            cursor: default;
-        }
-    </style>
-
-    <script>
-        AFRAME.registerComponent("room-interaction", {
-            init: function () {
-                this.ready = false;
-                this.failed = false;
-                this.tracked = false;
-                this.busy = false;
-                this.stageIndex = 0;
-                this.drops = [];
-
-                this.heading = document.getElementById("heading");
-                this.info = document.getElementById("info");
-                this.hint = document.getElementById("hint");
-                this.button = document.getElementById("next");
-
-                // EDIT THESE MESSAGES TO MATCH YOUR APPROVED COPY.
-                this.messages = [
-                    {
-                        title: "Imagine the possibilities",
-                        text: "Explore how the Print & Packaging Initiative can help build opportunities for students and faculty."
-                    },
-                    {
-                        title: "Make room for learning",
-                        text: "Support can help create opportunities for hands-on learning in print and packaging."
-                    },
-                    {
-                        title: "Connect ideas and industry",
-                        text: "The initiative brings attention to the connection between education and the print and packaging community."
-                    },
-                    {
-                        title: "Build opportunities",
-                        text: "A growing learning environment gives students space to develop skills and explore new ideas."
-                    },
-                    {
-                        title: "Help shape what comes next",
-                        text: "Thank you for exploring the initiative. Read the brochure to learn more about how to get involved."
-                    }
-                ];
-
-                const target = this.el.parentElement;
-
-                target.addEventListener("targetFound", () => {
-                    this.tracked = true;
-                    this.updateUI();
-                });
-
-                target.addEventListener("targetLost", () => {
-                    this.tracked = false;
-                    this.updateUI();
-                });
-
-                this.el.addEventListener("model-loaded", () => {
-                    const model = this.el.getObject3D("mesh");
-
-                    // Three.js may replace spaces with underscores.
-                    const normalize = (name) =>
-                        name.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-                    const findGroup = (name) => {
-                        let found = null;
-                        model.traverse((object) => {
-                            if (normalize(object.name) === normalize(name)) {
-                                found = object;
-                            }
-                        });
-                        return found;
-                    };
-
-                    this.startGroup = findGroup("Stage START");
-
-                    this.stages = [
-                        findGroup("Stage One"),
-                        findGroup("Stage Two"),
-                        findGroup("Stage Three"),
-                        findGroup("Stage Four")
-                    ];
-
-                    if (!this.startGroup ||
-                        this.stages.some((group) => !group)) {
-                        this.failed = true;
-                        this.info.textContent =
-                            "A stage group is missing from the model.";
-                        this.updateUI();
-                        return;
-                    }
-
-                    this.startGroup.visible = true;
-                    this.stages.forEach((group) => {
-                        group.visible = false;
-                    });
-
-                    model.traverse((object) => {
-                        if (!object.isMesh) return;
-
-                        const materials = Array.isArray(object.material)
-                            ? object.material
-                            : [object.material];
-
-                        materials.forEach((material) => {
-                            if (!material) return;
-                            material.side = AFRAME.THREE.DoubleSide;
-                            material.needsUpdate = true;
-                        });
-                    });
-
-                    this.ready = true;
-                    this.showMessage();
-                    this.updateUI();
-                });
-
-                this.el.addEventListener("model-error", () => {
-                    this.failed = true;
-                    this.info.textContent =
-                        "The room failed to load. Please reload the page.";
-                    this.updateUI();
-                });
-
-                this.onButtonClick = () => this.advance();
-
-                // Tapping outside the panel also advances the room.
-                this.onScreenTap = (event) => {
-                    if (event.target.closest &&
-                        event.target.closest("#panel")) return;
-
-                    this.advance();
-                };
-
-                this.button.addEventListener(
-                    "click", this.onButtonClick
-                );
-
-                window.addEventListener(
-                    "pointerup", this.onScreenTap
-                );
-            },
-
-            showMessage: function () {
-                const message = this.messages[this.stageIndex];
-                this.heading.textContent = message.title;
-                this.info.textContent = message.text;
-            },
-
-            updateUI: function () {
-                const complete = this.stageIndex >= 4;
-
-                this.button.disabled =
-                    !this.ready ||
-                    !this.tracked ||
-                    this.busy ||
-                    complete ||
-                    this.failed;
-
-                if (this.failed) {
-                    this.hint.textContent = "Unable to continue.";
-                    this.button.textContent = "Unavailable";
-                } else if (!this.ready) {
-                    this.hint.textContent = "Loading the room…";
-                    this.button.textContent = "Please wait";
-                } else if (!this.tracked) {
-                    this.hint.textContent =
-                        "Point your camera at the target picture.";
-                    this.button.textContent = "Find the picture";
-                } else if (this.busy) {
-                    this.hint.textContent =
-                        "Watch the new items fall into place!";
-                    this.button.textContent = "Building…";
-                } else if (complete) {
-                    this.hint.textContent =
-                        "You have explored every stage.";
-                    this.button.textContent = "Experience complete";
-                } else {
-                    this.hint.textContent =
-                        "Tap the screen or the button to add more.";
-                    this.button.textContent = "Add the next stage";
-                }
-            },
-
-            advance: function () {
-                if (!this.ready ||
-                    !this.tracked ||
-                    this.busy ||
-                    this.stageIndex >= this.stages.length) return;
-
-                const group = this.stages[this.stageIndex];
-
-                // Animate each top-level item as one complete object.
-                // Its meshes and child objects stay together.
-                const items = group.children.length
-                    ? group.children
-                    : [group];
-
-                const dropHeight = 4;
-                const duration = 2200;
-
-                this.drops = items.map((object, index) => {
-                    const finalPosition = object.position.clone();
-
-                    object.position.y =
-                        finalPosition.y + dropHeight;
-                    object.visible = false;
-
-                    return {
-                        object: object,
-                        finalPosition: finalPosition,
-                        elapsed: 0,
-                        delay: index * 120,
-                        duration: duration
-                    };
-                });
-
-                group.visible = true;
-
-                this.stageIndex++;
-                this.busy = true;
-                this.showMessage();
-                this.updateUI();
-            },
-
-            tick: function (time, delta) {
-                if (!this.busy || !this.tracked) return;
-
-                // Prevent a large jump after a stalled frame.
-                const step = Math.min(delta || 0, 50);
-                let complete = true;
-
-                this.drops.forEach((drop) => {
-                    drop.elapsed += step;
-
-                    if (drop.elapsed < drop.delay) {
-                        complete = false;
-                        return;
-                    }
-
-                    drop.object.visible = true;
-
-                    const progress = Math.min(
-                        (drop.elapsed - drop.delay) / drop.duration,
-                        1
-                    );
-
-                    // Ease-in-out motion for a slow, gentle drop.
-                    const eased = progress * progress *
-                        (3 - 2 * progress);
-
-                    drop.object.position.y =
-                        drop.finalPosition.y +
-                        4 * (1 - eased);
-
-                    if (progress < 1) {
-                        complete = false;
-                    } else {
-                        drop.object.position.copy(
-                            drop.finalPosition
-                        );
-                    }
-                });
-
-                if (complete) {
-                    this.busy = false;
-                    this.drops = [];
-                    this.updateUI();
-                }
-            },
-
-            remove: function () {
-                this.button.removeEventListener(
-                    "click", this.onButtonClick
-                );
-
-                window.removeEventListener(
-                    "pointerup", this.onScreenTap
-                );
+        this.el.addEventListener("model-loaded", () => {
+          try {
+            const THREE = AFRAME.THREE;
+            const model = this.el.getObject3D("mesh");
+            // Measure in model coordinates, separately from the AR placement.
+            this.el.removeObject3D("mesh");
+            model.updateMatrixWorld(true);
+            model.traverse((object) => {
+              if (object.isSkinnedMesh) {
+                object.skeleton.update();
+                object.computeBoundingBox();
+                object.computeBoundingSphere();
+              }
+            });
+            const bounds = new THREE.Box3().setFromObject(model);
+            const size = bounds.getSize(new THREE.Vector3());
+            const center = bounds.getCenter(new THREE.Vector3());
+            const footprint = Math.max(size.x, size.z);
+            if (bounds.isEmpty() || !Number.isFinite(footprint) || footprint <= 0) {
+              throw new Error("The model has no measurable geometry.");
             }
+
+            // Longest horizontal dimension is 80% of the target image width.
+            const scale = 0.8 / footprint;
+            const content = new THREE.Group();
+            content.name = "CenteredAxolotl";
+            content.add(model);
+            model.position.x -= center.x;
+            model.position.y -= bounds.min.y;
+            model.position.z -= center.z;
+            content.scale.setScalar(scale);
+            this.el.setObject3D("mesh", content);
+            this.ready = true;
+            this.updateStatus();
+          } catch (error) {
+            console.error("Axolotl placement error:", error);
+            this.failed = true;
+            this.status.textContent = "Model loaded, but placement failed: " + error.message;
+          }
         });
-    </script>
+
+        this.el.addEventListener("model-error", (event) => {
+          this.failed = true;
+          console.error("Axolotl model loading error:", event.detail);
+          this.status.textContent = "Axolotl failed to load. Check the filename and browser Console.";
+        });
+      },
+      updateStatus: function () {
+        if (this.failed) return;
+        this.status.textContent = !this.ready
+          ? "Loading axolotl…"
+          : this.tracked
+            ? "Target found! Move your phone to view the axolotl."
+            : "Axolotl loaded! Point your camera at the same target picture.";
+      },
+      remove: function () {
+        this.el.parentElement.removeEventListener("targetFound", this.onFound);
+        this.el.parentElement.removeEventListener("targetLost", this.onLost);
+      }
+    });
+  </script>
 </head>
-
 <body>
-    <div id="panel">
-        <h1 id="heading">Print & Packaging Initiative</h1>
-        <p id="info">Preparing your AR experience.</p>
-        <p id="hint">Loading the room…</p>
-        <button id="next" type="button" disabled>
-            Please wait
-        </button>
-    </div>
-
-    <a-scene
-        mindar-image="imageTargetSrc: ./targets.mind?v=6;
-                      filterMinCF: 0.001;
-                      filterBeta: 10;"
-        color-space="sRGB"
-        renderer="colorManagement: true"
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false">
-
-        <a-camera
-            position="0 0 0"
-            look-controls="enabled: false">
-        </a-camera>
-
-        <a-entity
-            light="type: ambient; intensity: 1.5">
-        </a-entity>
-
-        <a-entity
-            light="type: directional; intensity: 1"
-            position="1 2 3">
-        </a-entity>
-
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-entity
-                room-interaction
-                gltf-model="url(./ARRoom_fixed.glb?v=6)"
-                position="0 0 0.05"
-                rotation="90 0 0"
-                scale="0.08 0.08 0.08">
-            </a-entity>
-        </a-entity>
-
-    </a-scene>
+  <div id="panel">
+    <h1>Axolotl AR Test</h1>
+    <p id="status">Loading axolotl…</p>
+  </div>
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind?v=6; filterMinCF: 0.001; filterBeta: 10;"
+    color-space="sRGB"
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity light="type: ambient; intensity: 1.5"></a-entity>
+    <a-entity light="type: directional; intensity: 1" position="1 2 3"></a-entity>
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-entity rotation="90 0 0" position="0 0 0.05">
+        <a-entity axolotl-test gltf-model="url(./Axolotl.glb?v=11)"></a-entity>
+      </a-entity>
+    </a-entity>
+  </a-scene>
 </body>
 </html>
