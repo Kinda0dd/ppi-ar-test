@@ -5,7 +5,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1">
 
-    <title>Room AR</title>
+    <title>Room AR — Model Test</title>
 
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -17,23 +17,67 @@
             height: 100%;
             overflow: hidden;
         }
+
+        #status {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            z-index: 9999;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font: 16px Arial, sans-serif;
+            border-radius: 8px;
+            pointer-events: none;
+        }
     </style>
+
+    <script>
+        AFRAME.registerComponent("model-status", {
+            init: function () {
+                const status = document.getElementById("status");
+
+                this.el.addEventListener("model-loaded", () => {
+                    status.textContent =
+                        "Room loaded! Point the camera at your target picture.";
+
+                    // Show both sides of surfaces for this diagnostic test.
+                    const model = this.el.getObject3D("mesh");
+
+                    model.traverse((object) => {
+                        if (!object.isMesh) return;
+
+                        const materials = Array.isArray(object.material)
+                            ? object.material
+                            : [object.material];
+
+                        materials.forEach((material) => {
+                            if (!material) return;
+                            material.side = AFRAME.THREE.DoubleSide;
+                            material.needsUpdate = true;
+                        });
+                    });
+                });
+
+                this.el.addEventListener("model-error", () => {
+                    status.textContent =
+                        "Room failed to load. Check ARRoom.glb and the browser Console.";
+                });
+            }
+        });
+    </script>
 </head>
 
 <body>
+    <div id="status">Loading room…</div>
+
     <a-scene
-        mindar-image="imageTargetSrc: ./targets.mind?v=4;"
+        mindar-image="imageTargetSrc: ./targets.mind?v=5;"
         color-space="sRGB"
         renderer="colorManagement: true"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
-
-        <a-assets timeout="60000">
-            <a-asset-item
-                id="room-model"
-                src="./ARRoom.glb?v=4">
-            </a-asset-item>
-        </a-assets>
 
         <a-camera
             position="0 0 0"
@@ -41,7 +85,7 @@
         </a-camera>
 
         <a-entity
-            light="type: ambient; intensity: 1">
+            light="type: ambient; intensity: 1.5">
         </a-entity>
 
         <a-entity
@@ -52,22 +96,22 @@
         <a-entity mindar-image-target="targetIndex: 0">
 
             <a-box
-                position="0 0 0.1"
+                position="0.6 0 0.1"
                 width="0.1"
                 height="0.1"
                 depth="0.1"
                 material="color: #FF00FF; shader: flat">
             </a-box>
 
-            <a-gltf-model
-                src="#room-model"
-                position="0 0 0"
-                rotation="90 0 0"
-                scale="0.1 0.1 0.1">
-            </a-gltf-model>
+            <a-entity
+                model-status
+                gltf-model="url(./ARRoom.glb?v=5)"
+                position="0 0 0.05"
+                rotation="-90 0 0"
+                scale="0.08 0.08 0.08">
+            </a-entity>
 
         </a-entity>
-
     </a-scene>
 </body>
 </html>
