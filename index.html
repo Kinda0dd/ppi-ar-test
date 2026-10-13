@@ -5,7 +5,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1">
 
-    <title>Room AR — Model Test</title>
+    <title>Room AR</title>
 
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -42,7 +42,6 @@
                     status.textContent =
                         "Room loaded! Point the camera at your target picture.";
 
-                    // Show both sides of surfaces for this diagnostic test.
                     const model = this.el.getObject3D("mesh");
 
                     model.traverse((object) => {
@@ -54,6 +53,7 @@
 
                         materials.forEach((material) => {
                             if (!material) return;
+
                             material.side = AFRAME.THREE.DoubleSide;
                             material.needsUpdate = true;
                         });
@@ -62,7 +62,7 @@
 
                 this.el.addEventListener("model-error", () => {
                     status.textContent =
-                        "Room failed to load. Check ARRoom.glb and the browser Console.";
+                        "Room failed to load. Check the browser Console.";
                 });
             }
         });
@@ -73,7 +73,7 @@
     <div id="status">Loading room…</div>
 
     <a-scene
-        mindar-image="imageTargetSrc: ./targets.mind?v=5;"
+        mindar-image="imageTargetSrc: ./targets.mind?v=6;"
         color-space="sRGB"
         renderer="colorManagement: true"
         vr-mode-ui="enabled: false"
@@ -94,24 +94,15 @@
         </a-entity>
 
         <a-entity mindar-image-target="targetIndex: 0">
-
-            <a-box
-                position="0.6 0 0.1"
-                width="0.1"
-                height="0.1"
-                depth="0.1"
-                material="color: #FF00FF; shader: flat">
-            </a-box>
-
             <a-entity
                 model-status
                 gltf-model="url(./ARRoom_fixed.glb?v=6)"
                 position="0 0 0.05"
-                rotation="-90 0 0"
+                rotation="90 0 0"
                 scale="0.08 0.08 0.08">
             </a-entity>
-
         </a-entity>
+
     </a-scene>
 </body>
 </html>
